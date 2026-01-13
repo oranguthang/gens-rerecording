@@ -277,8 +277,16 @@ void Automation_OnFrame(int frameCount, void* screen, int mode, int Hmode, int V
     // Skip if automation disabled
     if (ScreenshotInterval <= 0) return;
 
-    // Check if movie finished - close emulator when movie playback ends
-    if (MainMovie.Status == MOVIE_FINISHED)
+    // Check max frames limit first (takes priority over movie end)
+    if (MaxFrames > 0 && frameCount >= MaxFrames)
+    {
+        // Post close message to end emulation
+        PostMessage(HWnd, WM_CLOSE, 0, 0);
+        return;
+    }
+
+    // If no max frames limit, close when movie finishes
+    if (MaxFrames == 0 && MainMovie.Status == MOVIE_FINISHED)
     {
         PostMessage(HWnd, WM_CLOSE, 0, 0);
         return;
@@ -286,14 +294,6 @@ void Automation_OnFrame(int frameCount, void* screen, int mode, int Hmode, int V
 
     // Only process on interval frames
     if (frameCount % ScreenshotInterval != 0) return;
-
-    // Check max frames limit
-    if (MaxFrames > 0 && frameCount >= MaxFrames)
-    {
-        // Post close message to end emulation
-        PostMessage(HWnd, WM_CLOSE, 0, 0);
-        return;
-    }
 
     // Build screenshot filename (frame number as name)
     char filename[1024];
