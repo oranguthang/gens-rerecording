@@ -7,6 +7,7 @@
 #include <stdio.h>
 #include <string.h>
 #include "automation.h"
+#include "state_dump.h"
 #include "gens.h"
 #include "G_main.h"
 #include "G_ddraw.h"
@@ -27,6 +28,7 @@ int DiffCount = 0;
 char ScreenshotDir[1024] = ".";
 char ReferenceDir[1024] = "";
 unsigned char DiffColor[4] = {255, 0, 255, 255};  // BGRA: Pink (magenta) by default
+int CompareStateDumpsMode = 0;
 
 // Internal buffer for reference image (320x240 max, BGRA = 4 bytes per pixel)
 static unsigned char RefBuffer[320 * 240 * 4];
@@ -41,6 +43,9 @@ void Automation_Init()
     DiffCount = 0;
     strcpy(ScreenshotDir, ".");
     ReferenceDir[0] = '\0';
+
+    // Initialize state dump module
+    StateDump_Init();
 }
 
 void Automation_Reset()
@@ -274,7 +279,10 @@ bool Save_Diff_Image(int X, int Y, const char* filename)
 
 void Automation_OnFrame(int frameCount, void* screen, int mode, int Hmode, int Vmode)
 {
-    // Skip if automation disabled
+    // Process state dumps (independent of screenshot automation)
+    StateDump_OnFrame(frameCount);
+
+    // Skip if screenshot automation disabled
     if (ScreenshotInterval <= 0) return;
 
     // Check max frames limit first (takes priority over movie end)
@@ -299,36 +307,116 @@ void Automation_OnFrame(int frameCount, void* screen, int mode, int Hmode, int V
     char filename[1024];
     sprintf(filename, "%s\\%06d.png", ScreenshotDir, frameCount);
 
+    // Build basename for state dumps (without extension)
+    char basename[32];
+    sprintf(basename, "%06d", frameCount);
+
     if (ReferenceDir[0] == '\0')
     {
-        // RECORD MODE: just save screenshot
+        // RECORD MODE: save screenshot (and optionally state dump)
         Save_Shot_To_File(screen, mode, Hmode, Vmode, filename);
+
+        // If state dump mode is enabled, save state dump alongside screenshot
+        if (StateDumpWithScreenshots)
+        {
+            StateDump_DumpStateToFile(ScreenshotDir, basename);
+        }
     }
     else
     {
-        // COMPARE MODE: load reference and compare
-        char refPath[1024];
-        sprintf(refPath, "%s\\%06d.png", ReferenceDir, frameCount);
-
-        if (!Compare_With_Reference(screen, mode, Hmode, Vmode, refPath))
+        // COMPARE MODE: compare screenshots OR state dumps
+        if (CompareStateDumpsMode)
         {
-            // Difference found! Save current screenshot
-            Save_Shot_To_File(screen, mode, Hmode, Vmode, filename);
+            // STATE DUMP COMPARISON MODE
+            // Simple approach: Load reference state dump and compare key sections
+            char refStatePath[1024];
+            sprintf(refStatePath, "%s\\%06d.genstate", ReferenceDir, frameCount);
 
-            // Also save diff visualization (reference with diff pixels highlighted)
-            char diffFilename[1024];
-            sprintf(diffFilename, "%s\\%06d_diff.png", ScreenshotDir, frameCount);
-            int X = Hmode ? 320 : 256;
-            int Y = Vmode ? 240 : 224;
-            Save_Diff_Image(X, Y, diffFilename);
-
-            DiffCount++;
-
-            // Check max diffs limit
-            if (MaxDiffs > 0 && DiffCount >= MaxDiffs)
+            // Check if reference dump exists
+            FILE* refFile = fopen(refStatePath, "rb");
+            if (!refFile)
             {
-                // Exceeded diff limit - early exit
+                // No reference dump - skip this frame
+                return;
+            }
+
+            // Simple memory comparison: just compare current RAM with reference RAM
+            // Read reference RAM section (skip header and section table - RAM is at known offset)
+            // Header: 64 bytes
+            // Section table: ~112 bytes (7 sections × 16 bytes)
+            // First section is RAM at offset ~176
+            fseek(refFile, 176, SEEK_SET);
+
+            unsigned char* refRam = new unsigned char[65536];
+            size_t bytesRead = fread(refRam, 1, 65536, refFile);
+            fclose(refFile);
+
+            if (bytesRead != 65536)
+            {
+                delete[] refRam;
+                return;
+            }
+
+            // Get current RAM (Ram_68k is the 68000 RAM buffer)
+            extern unsigned char Ram_68k[64 * 1024];
+
+            // Compare RAM
+            bool hasDifference = false;
+            for (int i = 0; i < 65536; i++)
+            {
+                if (Ram_68k[i] != refRam[i])
+                {
+                    hasDifference = true;
+                    break;
+                }
+            }
+
+            delete[] refRam;
+
+            // If difference found, save current state and exit
+            if (hasDifference && DiffCount == 0)
+            {
+                // Save current state dump
+                StateDump_DumpStateToFile(ScreenshotDir, basename);
+
+                // Also save screenshot for visual reference
+                Save_Shot_To_File(screen, mode, Hmode, Vmode, filename);
+
+                DiffCount++;
+
+                // Exit immediately after first diff
                 PostMessage(HWnd, WM_CLOSE, 0, 0);
+            }
+        }
+        else
+        {
+            // SCREENSHOT COMPARISON MODE (original behavior)
+            char refPath[1024];
+            sprintf(refPath, "%s\\%06d.png", ReferenceDir, frameCount);
+
+            if (!Compare_With_Reference(screen, mode, Hmode, Vmode, refPath))
+            {
+                // Difference found! Save current screenshot
+                Save_Shot_To_File(screen, mode, Hmode, Vmode, filename);
+
+                // Also save diff visualization (reference with diff pixels highlighted)
+                char diffFilename[1024];
+                sprintf(diffFilename, "%s\\%06d_diff.png", ScreenshotDir, frameCount);
+                int X = Hmode ? 320 : 256;
+                int Y = Vmode ? 240 : 224;
+                Save_Diff_Image(X, Y, diffFilename);
+
+                // Also save state dump for this frame (for memory-level analysis)
+                StateDump_DumpStateToFile(ScreenshotDir, basename);
+
+                DiffCount++;
+
+                // Check max diffs limit
+                if (MaxDiffs > 0 && DiffCount >= MaxDiffs)
+                {
+                    // Exceeded diff limit - early exit
+                    PostMessage(HWnd, WM_CLOSE, 0, 0);
+                }
             }
         }
     }

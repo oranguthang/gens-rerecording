@@ -12,6 +12,7 @@
 #include "G_ddraw.h"
 #include "G_dsound.h"
 #include "automation.h"
+#include "state_dump.h"
 #include "gens.h"
 
 using namespace std;
@@ -32,7 +33,8 @@ void ParseCmdLine(LPSTR lpCmdLine, HWND HWnd)
 
 	//List of valid commandline args
 	string argCmds[] = {"-cfg", "-rom", "-play", "-readwrite", "-loadstate", "-pause", "-lua",
-		"-screenshot-interval", "-screenshot-dir", "-reference-dir", "-max-frames", "-max-diffs", "-frameskip", "-turbo", "-nosound", "-window-x", "-window-y", "-diff-color", ""};	//Hint:  to add new commandlines, start by inserting them here.
+		"-screenshot-interval", "-screenshot-dir", "-reference-dir", "-max-frames", "-max-diffs", "-frameskip", "-turbo", "-nosound", "-window-x", "-window-y", "-diff-color",
+		"-dump-state-dir", "-dump-state-interval", "-dump-state-start", "-dump-state-end", "-save-state-dumps", "-compare-state-dumps", ""};	//Hint:  to add new commandlines, start by inserting them here.
 
 	//Strings that will get parsed:
 	string CfgToLoad = "";		//Cfg filename
@@ -55,6 +57,14 @@ void ParseCmdLine(LPSTR lpCmdLine, HWND HWnd)
 	string WindowXStr = "";				// Window X position
 	string WindowYStr = "";				// Window Y position
 	string DiffColorStr = "";			// Diff highlight color name
+
+	// State dump parameters
+	string StateDumpDirStr = "";		// Directory for state dumps
+	string StateDumpIntervalStr = "";	// Dump every N frames
+	string StateDumpStartStr = "";		// Start dumping from frame
+	string StateDumpEndStr = "";		// Stop dumping after frame
+	string SaveStateDumpsStr = "";		// Save state dumps with screenshots
+	string CompareStateDumpsStr = "";	// Compare state dumps instead of screenshots
 
 	//Temps for finding string list
 	int commandBegin = 0;	//Beginning of Command
@@ -148,7 +158,25 @@ void ParseCmdLine(LPSTR lpCmdLine, HWND HWnd)
 		case 17: //-diff-color
 			DiffColorStr = newCommand;
 			break;
-		case 18: //  (a filename on its own, this must come BEFORE any other options on the commandline)
+		case 18: //-dump-state-dir
+			StateDumpDirStr = newCommand;
+			break;
+		case 19: //-dump-state-interval
+			StateDumpIntervalStr = newCommand;
+			break;
+		case 20: //-dump-state-start
+			StateDumpStartStr = newCommand;
+			break;
+		case 21: //-dump-state-end
+			StateDumpEndStr = newCommand;
+			break;
+		case 22: //-save-state-dumps
+			SaveStateDumpsStr = newCommand;
+			break;
+		case 23: //-compare-state-dumps
+			CompareStateDumpsStr = newCommand;
+			break;
+		case 24: //  (a filename on its own, this must come BEFORE any other options on the commandline)
 			if(newCommand[0] != '-')
 				FileToLoad = newCommand;
 			break;
@@ -296,6 +324,47 @@ void ParseCmdLine(LPSTR lpCmdLine, HWND HWnd)
 		{
 			DiffColor[0] = 0; DiffColor[1] = 165; DiffColor[2] = 255; DiffColor[3] = 255;
 		}
+	}
+
+	// State dump parameters
+	if (StateDumpDirStr[0])
+	{
+		strncpy(StateDumpDir, StateDumpDirStr.c_str(), sizeof(StateDumpDir) - 1);
+		StateDumpDir[sizeof(StateDumpDir) - 1] = '\0';
+
+		// Create directory if it doesn't exist
+		CreateDirectoryA(StateDumpDir, NULL);
+	}
+
+	if (StateDumpIntervalStr[0])
+	{
+		StateDumpInterval = atoi(StateDumpIntervalStr.c_str());
+		if (StateDumpInterval < 0) StateDumpInterval = 0;
+	}
+
+	if (StateDumpStartStr[0])
+	{
+		StateDumpStart = atoi(StateDumpStartStr.c_str());
+		if (StateDumpStart < 0) StateDumpStart = 0;
+	}
+
+	if (StateDumpEndStr[0])
+	{
+		StateDumpEnd = atoi(StateDumpEndStr.c_str());
+		if (StateDumpEnd < 0) StateDumpEnd = 0;
+	}
+
+	if (SaveStateDumpsStr[0])
+	{
+		StateDumpWithScreenshots = 1;
+	}
+
+	if (CompareStateDumpsStr[0])
+	{
+		// This will be handled by automation module
+		// Set a flag to enable state dump comparison mode
+		extern int CompareStateDumpsMode;
+		CompareStateDumpsMode = 1;
 	}
 
 

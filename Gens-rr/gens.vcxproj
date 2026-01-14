@@ -363,6 +363,7 @@
     <ClCompile Include="src\RKABoxHack.cpp" />
     <ClCompile Include="src\SonicHackSuite.cpp" />
     <ClCompile Include="src\automation.cpp" />
+    <ClCompile Include="src\state_dump.cpp" />
   </ItemGroup>
   <ItemGroup>
     <CustomBuild Include="src\blit.asm">
@@ -650,6 +651,7 @@
     <ClInclude Include="src\RKABoxHack.h" />
     <ClInclude Include="src\SonicHackSuite.h" />
     <ClInclude Include="src\automation.h" />
+    <ClInclude Include="src\state_dump.h" />
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="src\Gens.rc" />
