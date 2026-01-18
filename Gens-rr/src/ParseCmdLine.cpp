@@ -34,7 +34,7 @@ void ParseCmdLine(LPSTR lpCmdLine, HWND HWnd)
 	//List of valid commandline args
 	string argCmds[] = {"-cfg", "-rom", "-play", "-readwrite", "-loadstate", "-pause", "-lua",
 		"-screenshot-interval", "-screenshot-dir", "-reference-dir", "-max-frames", "-max-diffs", "-max-memory-diffs", "-frameskip", "-turbo", "-nosound", "-window-x", "-window-y", "-diff-color",
-		"-dump-state-dir", "-dump-state-interval", "-dump-state-start", "-dump-state-end", "-save-state-dumps", "-compare-state-dumps", ""};	//Hint:  to add new commandlines, start by inserting them here.
+		"-dump-state-dir", "-dump-state-interval", "-dump-state-start", "-dump-state-end", "-save-state-dumps", "-compare-state-dumps", "-memory-after-visual", ""};	//Hint:  to add new commandlines, start by inserting them here.
 
 	//Strings that will get parsed:
 	string CfgToLoad = "";		//Cfg filename
@@ -53,6 +53,7 @@ void ParseCmdLine(LPSTR lpCmdLine, HWND HWnd)
 	string MaxFramesStr = "";			// Stop after N frames
 	string MaxDiffsStr = "";			// Stop after N screenshot differences
 	string MaxMemoryDiffsStr = "";		// Stop after N memory differences
+	string MemoryAfterVisualStr = "";	// Only save memory diffs after visual diff
 	string FrameSkipStr = "";			// Frame skip value
 	string TurboStr = "";				// Enable turbo mode
 	string WindowXStr = "";				// Window X position
@@ -180,7 +181,10 @@ void ParseCmdLine(LPSTR lpCmdLine, HWND HWnd)
 		case 24: //-compare-state-dumps
 			CompareStateDumpsStr = newCommand;
 			break;
-		case 25: //  (a filename on its own, this must come BEFORE any other options on the commandline)
+		case 25: //-memory-after-visual
+			MemoryAfterVisualStr = newCommand;
+			break;
+		case 26: //  (a filename on its own, this must come BEFORE any other options on the commandline)
 			if(newCommand[0] != '-')
 				FileToLoad = newCommand;
 			break;
@@ -271,6 +275,13 @@ void ParseCmdLine(LPSTR lpCmdLine, HWND HWnd)
 	{
 		MaxMemoryDiffs = atoi(MaxMemoryDiffsStr.c_str());
 		if (MaxMemoryDiffs < 0) MaxMemoryDiffs = 0;
+	}
+
+	if (MemoryAfterVisualStr[0])
+	{
+		SaveMemoryOnlyAfterVisual = atoi(MemoryAfterVisualStr.c_str());
+		if (SaveMemoryOnlyAfterVisual < 0) SaveMemoryOnlyAfterVisual = 0;
+		if (SaveMemoryOnlyAfterVisual > 1) SaveMemoryOnlyAfterVisual = 1;
 	}
 
 	if (FrameSkipStr[0])

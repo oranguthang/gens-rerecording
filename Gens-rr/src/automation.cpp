@@ -38,6 +38,7 @@ int MaxDiffs = 10;
 int DiffCount = 0;
 int MaxMemoryDiffs = 10;
 int MemoryDiffCount = 0;
+int SaveMemoryOnlyAfterVisual = 0;  // Only save memory diffs after first visual diff
 char ScreenshotDir[1024] = ".";
 char ReferenceDir[1024] = "";
 unsigned char DiffColor[4] = {255, 0, 255, 255};  // BGRA: Pink (magenta) by default
@@ -56,6 +57,7 @@ void Automation_Init()
     DiffCount = 0;
     MaxMemoryDiffs = 10;
     MemoryDiffCount = 0;
+    SaveMemoryOnlyAfterVisual = 0;
     strcpy(ScreenshotDir, ".");
     ReferenceDir[0] = '\0';
 
@@ -634,24 +636,32 @@ void Automation_OnFrame(int frameCount, void* screen, int mode, int Hmode, int V
         }
 
         // 2. FULL STATE COMPARISON (all sections: RAM, VRAM, CRAM, registers, etc.)
-        char refStatePath[1024];
-        sprintf(refStatePath, "%s\\%06d.genstate", ReferenceDir, frameCount);
-
-        // Compare full state and save diff CSV (section, address, expected, actual)
-        int stateDiffs = Compare_Full_State_And_Save_Diff(refStatePath, ScreenshotDir, basename);
-
-        if (stateDiffs > 0)
+        // Only compare/save memory diffs if:
+        // - SaveMemoryOnlyAfterVisual is disabled (0), OR
+        // - We've already found at least one visual difference (DiffCount > 0)
+        bool shouldCheckMemory = (SaveMemoryOnlyAfterVisual == 0) || (DiffCount > 0);
+        
+        if (shouldCheckMemory)
         {
-            memoryDiff = true;
-            MemoryDiffCount++;
+            char refStatePath[1024];
+            sprintf(refStatePath, "%s\\%06d.genstate", ReferenceDir, frameCount);
 
-            // Save current state dump for full state analysis
-            StateDump_DumpStateToFile(ScreenshotDir, basename);
+            // Compare full state and save diff CSV (section, address, expected, actual)
+            int stateDiffs = Compare_Full_State_And_Save_Diff(refStatePath, ScreenshotDir, basename);
 
-            // Also save screenshot for visual reference (if not already saved by screenshot diff)
-            if (!screenshotDiff)
+            if (stateDiffs > 0)
             {
-                Save_Shot_To_File(screen, mode, Hmode, Vmode, filename);
+                memoryDiff = true;
+                MemoryDiffCount++;
+
+                // Save current state dump for full state analysis
+                StateDump_DumpStateToFile(ScreenshotDir, basename);
+
+                // Also save screenshot for visual reference (if not already saved by screenshot diff)
+                if (!screenshotDiff)
+                {
+                    Save_Shot_To_File(screen, mode, Hmode, Vmode, filename);
+                }
             }
         }
 
