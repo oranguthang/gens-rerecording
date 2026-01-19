@@ -13,6 +13,7 @@
 #include "G_dsound.h"
 #include "automation.h"
 #include "state_dump.h"
+#include "bintrace.h"
 #include "gens.h"
 
 using namespace std;
@@ -35,7 +36,8 @@ void ParseCmdLine(LPSTR lpCmdLine, HWND HWnd)
 	string argCmds[] = {"-cfg", "-rom", "-play", "-readwrite", "-loadstate", "-pause", "-lua",
 		"-screenshot-interval", "-screenshot-dir", "-reference-dir", "-max-frames", "-max-diffs", "-max-memory-diffs", "-frameskip", "-turbo", "-nosound", "-window-x", "-window-y", "-diff-color",
 		"-dump-state-dir", "-dump-state-interval", "-dump-state-start", "-dump-state-end", "-save-state-dumps", "-compare-state-dumps", "-memory-after-visual",
-		"-trace-breakpoint", "-trace-frames", "-trace-log", "-trace-start", "-trace-end", ""};	//Hint:  to add new commandlines, start by inserting them here.
+		"-trace-breakpoint", "-trace-frames", "-trace-log", "-trace-start", "-trace-end",
+		"-bintrace", "-bintrace-start", "-bintrace-end", "-bintrace-vdp", "-bintrace-dma", ""};	//Hint:  to add new commandlines, start by inserting them here.
 
 	//Strings that will get parsed:
 	string CfgToLoad = "";		//Cfg filename
@@ -75,6 +77,13 @@ void ParseCmdLine(LPSTR lpCmdLine, HWND HWnd)
 	string TraceLogStr = "";			// Path to trace log file
 	string TraceStartStr = "";			// Start frame for tracing
 	string TraceEndStr = "";			// End frame for tracing
+
+	// Binary trace parameters
+	string BinTracePathStr = "";		// Binary trace output file path
+	string BinTraceStartStr = "";		// Start frame for binary trace
+	string BinTraceEndStr = "";			// End frame for binary trace
+	string BinTraceVDPStr = "";			// Log VDP accesses (1 = yes, 0 = no)
+	string BinTraceDMAStr = "";			// Log DMA transfers (1 = yes, 0 = no)
 
 	//Temps for finding string list
 	int commandBegin = 0;	//Beginning of Command
@@ -207,7 +216,22 @@ void ParseCmdLine(LPSTR lpCmdLine, HWND HWnd)
 		case 30: //-trace-end
 			TraceEndStr = newCommand;
 			break;
-		case 31: //  (a filename on its own, this must come BEFORE any other options on the commandline)
+		case 31: //-bintrace
+			BinTracePathStr = newCommand;
+			break;
+		case 32: //-bintrace-start
+			BinTraceStartStr = newCommand;
+			break;
+		case 33: //-bintrace-end
+			BinTraceEndStr = newCommand;
+			break;
+		case 34: //-bintrace-vdp
+			BinTraceVDPStr = newCommand;
+			break;
+		case 35: //-bintrace-dma
+			BinTraceDMAStr = newCommand;
+			break;
+		case 36: //  (a filename on its own, this must come BEFORE any other options on the commandline)
 			if(newCommand[0] != '-')
 				FileToLoad = newCommand;
 			break;
@@ -444,6 +468,46 @@ void ParseCmdLine(LPSTR lpCmdLine, HWND HWnd)
 	{
 		TraceEndFrame = atoi(TraceEndStr.c_str());
 		if (TraceEndFrame < 0) TraceEndFrame = 0;
+	}
+
+	// Binary trace parameters
+	if (BinTracePathStr[0])
+	{
+		strncpy(BinTracePath, BinTracePathStr.c_str(), sizeof(BinTracePath) - 1);
+		BinTracePath[sizeof(BinTracePath) - 1] = '\0';
+	}
+
+	if (BinTraceStartStr[0])
+	{
+		BinTraceStartFrame = atoi(BinTraceStartStr.c_str());
+		if (BinTraceStartFrame < 0) BinTraceStartFrame = 0;
+	}
+
+	if (BinTraceEndStr[0])
+	{
+		BinTraceEndFrame = atoi(BinTraceEndStr.c_str());
+		if (BinTraceEndFrame < 0) BinTraceEndFrame = 0;
+	}
+
+	if (BinTraceVDPStr[0])
+	{
+		BinTraceLogVDP = atoi(BinTraceVDPStr.c_str());
+		if (BinTraceLogVDP < 0) BinTraceLogVDP = 0;
+		if (BinTraceLogVDP > 1) BinTraceLogVDP = 1;
+	}
+
+	if (BinTraceDMAStr[0])
+	{
+		BinTraceLogDMA = atoi(BinTraceDMAStr.c_str());
+		if (BinTraceLogDMA < 0) BinTraceLogDMA = 0;
+		if (BinTraceLogDMA > 1) BinTraceLogDMA = 1;
+	}
+
+	// Initialize binary trace if path is set and start frame is 0 (immediate start)
+	// For delayed start (BinTraceStartFrame > 0), trace will be initialized in Automation_OnFrame
+	if (BinTracePath[0] && BinTraceStartFrame == 0)
+	{
+		BinTrace_Init(BinTracePath);
 	}
 
 

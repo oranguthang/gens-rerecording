@@ -8,6 +8,7 @@
 #include <string.h>
 #include "automation.h"
 #include "state_dump.h"
+#include "bintrace.h"
 #include "gens.h"
 #include "G_main.h"
 #include "G_ddraw.h"
@@ -595,6 +596,28 @@ void Automation_OnFrame(int frameCount, void* screen, int mode, int Hmode, int V
     if (TraceStartFrame > 0 || (TraceBreakpointHit && TraceActive))
     {
         Trace_OnFrame(frameCount);
+    }
+
+    // Binary trace handling
+    // Check for delayed start (BinTraceStartFrame > 0)
+    if (BinTracePath[0] && !BinTraceActive && BinTraceStartFrame > 0 && frameCount >= BinTraceStartFrame)
+    {
+        BinTrace_Init(BinTracePath);
+    }
+
+    if (BinTraceActive)
+    {
+        // Emit frame marker
+        BinTrace_Flush();
+        BinTrace_FrameMarker(frameCount);
+
+        // Check if we should stop tracing (use > not >= to include END frame fully)
+        if (BinTraceEndFrame > 0 && frameCount > BinTraceEndFrame)
+        {
+            BinTrace_Close();
+            PostMessage(HWnd, WM_CLOSE, 0, 0);
+            return;
+        }
     }
 
     // Skip if screenshot automation disabled

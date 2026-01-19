@@ -9,6 +9,7 @@
 #include "luascript.h"
 #include "tracer.h"
 #include "automation.h"
+#include "bintrace.h"
 
 #define uint32 unsigned int
 
@@ -414,11 +415,15 @@ void trace_read_byte()
 {
 	if( hook_trace && rd_mode )
 		trace_read_byte_internal();
-	
+
 	// Automation trace - log read
 	if (TraceActive)
 		Trace_LogMemAccess("READ", hook_pc, hook_address, hook_value, 1);
-	
+
+	// Binary trace - log read
+	if (BinTraceActive)
+		BinTrace_MemAccess(EVT_READ, hook_pc, hook_address, hook_value, 1);
+
 	CallRegisteredLuaMemHook(hook_address, 1, hook_value, LUAMEMHOOK_READ);
 }
 
@@ -476,11 +481,15 @@ void trace_read_word()
 {
 	if( hook_trace && rd_mode )
 		trace_read_word_internal();
-	
+
 	// Automation trace - log read
 	if (TraceActive)
 		Trace_LogMemAccess("READ", hook_pc, hook_address, hook_value, 2);
-	
+
+	// Binary trace - log read
+	if (BinTraceActive)
+		BinTrace_MemAccess(EVT_READ, hook_pc, hook_address, hook_value, 2);
+
 	CallRegisteredLuaMemHook(hook_address, 2, hook_value, LUAMEMHOOK_READ);
 }
 
@@ -539,11 +548,15 @@ void trace_read_dword()
 {
 	if( hook_trace && rd_mode )
 		trace_read_dword_internal();
-	
+
 	// Automation trace - log read
 	if (TraceActive)
 		Trace_LogMemAccess("READ", hook_pc, hook_address, hook_value, 4);
-	
+
+	// Binary trace - log read
+	if (BinTraceActive)
+		BinTrace_MemAccess(EVT_READ, hook_pc, hook_address, hook_value, 4);
+
 	CallRegisteredLuaMemHook(hook_address, 4, hook_value, LUAMEMHOOK_READ);
 }
 
@@ -609,11 +622,15 @@ void trace_write_byte()
 {
 	if( hook_trace && wr_mode )
 		trace_write_byte_internal();
-	
+
 	// Automation trace - log write
 	if (TraceActive)
 		Trace_LogMemAccess("WRITE", hook_pc, hook_address, hook_value, 1);
-	
+
+	// Binary trace - log write
+	if (BinTraceActive)
+		BinTrace_MemAccess(EVT_WRITE, hook_pc, hook_address, hook_value, 1);
+
 	CallRegisteredLuaMemHook(hook_address, 1, hook_value, LUAMEMHOOK_WRITE);
 }
 
@@ -672,11 +689,15 @@ void trace_write_word()
 {
 	if( hook_trace && wr_mode )
 		trace_write_word_internal();
-	
+
 	// Automation trace - log write
 	if (TraceActive)
 		Trace_LogMemAccess("WRITE", hook_pc, hook_address, hook_value, 2);
-	
+
+	// Binary trace - log write
+	if (BinTraceActive)
+		BinTrace_MemAccess(EVT_WRITE, hook_pc, hook_address, hook_value, 2);
+
 	CallRegisteredLuaMemHook(hook_address, 2, hook_value, LUAMEMHOOK_WRITE);
 }
 
@@ -735,11 +756,15 @@ void trace_write_dword()
 {
 	if( hook_trace && wr_mode )
 		trace_write_dword_internal();
-	
+
 	// Automation trace - log write
 	if (TraceActive)
 		Trace_LogMemAccess("WRITE", hook_pc, hook_address, hook_value, 4);
-	
+
+	// Binary trace - log write
+	if (BinTraceActive)
+		BinTrace_MemAccess(EVT_WRITE, hook_pc, hook_address, hook_value, 4);
+
 	CallRegisteredLuaMemHook(hook_address, 4, hook_value, LUAMEMHOOK_WRITE);
 }
 
@@ -887,6 +912,16 @@ void hook_dma()
 {
 	if( hook_trace && rd_mode )
 		hook_dma_internal();
+
+	// Binary trace - log DMA
+	if (BinTraceActive)
+	{
+		uint32_t src = VDP_Reg.DMA_Address << 1;
+		uint32_t dst = Ctrl.Address;
+		uint16_t len = VDP_Reg.DMA_Length << 1;
+		uint8_t dst_type = hook_value & 3;  // 0=VRAM, 1=CRAM, 2=VSRAM
+		BinTrace_DMA(hook_pc, src, dst, len, dst_type);
+	}
 }
 
 
@@ -965,6 +1000,10 @@ void trace_write_vram_byte()
 {
 	if( hook_trace && ppu_mode )
 		trace_write_vram_byte_internal();
+
+	// Binary trace - log VRAM write
+	if (BinTraceActive)
+		BinTrace_VRAMAccess(Ctrl.Access, hook_pc, Ctrl.Address, hook_value, 1);
 }
 
 
@@ -1043,6 +1082,10 @@ void trace_write_vram_word()
 {
 	if( hook_trace && ppu_mode )
 		trace_write_vram_word_internal();
+
+	// Binary trace - log VRAM write
+	if (BinTraceActive)
+		BinTrace_VRAMAccess(Ctrl.Access, hook_pc, Ctrl.Address, hook_value, 2);
 }
 
 
@@ -1121,6 +1164,10 @@ void trace_read_vram_byte()
 {
 	if( hook_trace && ppu_mode )
 		trace_read_vram_byte_internal();
+
+	// Binary trace - log VRAM read
+	if (BinTraceActive)
+		BinTrace_VRAMAccess(Ctrl.Access, hook_pc, Ctrl.Address, hook_value, 1);
 }
 
 
@@ -1199,6 +1246,10 @@ void trace_read_vram_word()
 {
 	if( hook_trace && ppu_mode )
 		trace_read_vram_word_internal();
+
+	// Binary trace - log VRAM read
+	if (BinTraceActive)
+		BinTrace_VRAMAccess(Ctrl.Access, hook_pc, Ctrl.Address, hook_value, 2);
 }
 
 
