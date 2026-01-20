@@ -24,6 +24,7 @@ Output: `Gens-rr/Output/Gens.exe`
 | `-reference-dir path` | Directory with reference screenshots (enables compare mode) |
 | `-max-frames N` | Stop emulation after N frames |
 | `-max-diffs N` | Stop after N differences found (default: 10) |
+| `-no-memory-diffs` | Visual-only mode, don't save memory diff files |
 | `-frameskip N` | Set frame skip (-1 to 8) |
 | `-turbo` | Enable turbo mode |
 
