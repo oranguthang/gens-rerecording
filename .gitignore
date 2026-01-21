@@ -9,10 +9,6 @@ Output/
 *.exp
 *.idb
 
-# 7zip build
-7z/Release/
-7z/Debug/
-
 # Starscream generated files
 Starscream/Main68k/main68k.asm
 Starscream/Sub68k/sub68k.asm
