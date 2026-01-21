@@ -1,6 +1,6 @@
-# Gens-rr with Automation Extension
+# Gens-rerecording with Automation Extension
 
-Fork of Gens-rr emulator with screenshot automation for ROM analysis.
+Fork of Gens-rerecording emulator with screenshot automation for ROM analysis.
 
 ## Build
 
