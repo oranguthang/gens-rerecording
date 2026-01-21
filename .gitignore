@@ -2,11 +2,8 @@
 Release/
 Debug/
 Output/
-*.exe
-*.dll
 *.obj
 *.o
-*.lib
 *.pdb
 *.ilk
 *.exp
@@ -17,11 +14,7 @@ Output/
 7z/Debug/
 
 # Starscream generated files
-Starscream/Main68k/Release/
-Starscream/Main68k/Debug/
 Starscream/Main68k/main68k.asm
-Starscream/Sub68k/Release/
-Starscream/Sub68k/Debug/
 Starscream/Sub68k/sub68k.asm
 
 # Generated headers
